@@ -136,7 +136,6 @@ creature move_creature(int L, int C, creature grid[L][C], int x, int y, int cur_
 
 list move_creatures(int L, int C, creature grid[L][C], int cur_gen, list l) {
 	list l_new = create_list(l.size);
-	creature c;
 	int x, y;
 	for (int i = 0; i < l.used; i++){
 
@@ -170,7 +169,6 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 		int hung_age, list l_old, list* l_other, list* l) {
 
 	// list for removing creatures
-	creature c;
 	list r = create_list(l->used);
 	for (int i = 0; i < l->used; i++){
 		int ax = l->array[i].x;
@@ -188,6 +186,8 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 			int oldx = l_old.array[i].x;
 			int oldy = l_old.array[i].y;
 			creature* old_creature = &(grid[oldx][oldy]);
+
+			atack.proc_age++;
 
 			// can reproduce
 			if (atack.proc_age++ >= proc_age){
