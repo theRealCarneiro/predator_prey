@@ -61,14 +61,17 @@ int main() {
 	// Main Loop
 
 	// Generations
+	print_grid(L, C, grid);
 	for (int g = 0; g < N_GEN; g++) {
-		print_grid(L, C, grid);
+		printf("\n------------\n");
 		list bunny_new = move_creatures(L, C, grid, g, bunny);
-		solve_conflict(L, C, grid, g, GEN_PROC_BUNNY, 0, bunny, &fox, &bunny_new);
-
+		solve_conflict(L, C, grid, g, GEN_PROC_BUNNY, GEN_FOOD_FOX, bunny, &fox, &bunny_new);
 		print_grid(L, C, grid);
+		printf("\n------------\n");
+
 		list fox_new = move_creatures(L, C, grid, g, fox);
 		solve_conflict(L, C, grid, g, GEN_PROC_FOX, GEN_FOOD_FOX, fox, &bunny_new, &fox_new);
+		print_grid(L, C, grid);
 
 		destroy_list(bunny);
 		destroy_list(fox);

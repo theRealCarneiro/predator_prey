@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <omp.h>
 #include "creature.h"
 
 
@@ -30,10 +31,7 @@ void remove_id(list* l, int id) {
 
 void remove_creature(list* l, creature c) {
 	for (int i = 0; i < l->used; i++) {
-		if(l->array[i].x == c.x && l->array[i].y == c.y &&
-				l->array[i].proc_age == c.proc_age &&
-				l->array[i].hung_age == c.hung_age &&
-				l->array[i].type == c.type){ 
+		if(l->array[i].x == c.x && l->array[i].y == c.y){ 
 			memmove(&l->array[i], &l->array[i + 1], (l->used - i - 1) * sizeof(creature));
 			l->used--;
 		}
@@ -45,12 +43,36 @@ creature create_creature(int x, int y, int type) {
 	return c;
 }
 
+void print_creature(creature c) {
+	char type[6];
+	if (c.type == FOX) 
+		strcpy(type, "FOX");
+
+	else if (c.type == BUNNY)
+		strcpy(type, "BUNNY");
+
+	else if (c.type == EMPTY)
+		strcpy(type, "EMPTY");
+
+	else if (c.type == ROCK)
+		strcpy(type, "ROCK");
+
+	printf("%s[%d][%d]:", type, c.x, c.y);
+}
+
 void print_list(list* l) {
 	for (int i = 0; i < l->used; i++){
-		char* type = l->array[i].type == FOX ? "FOX" : "BUNNY";
-		printf("%s[%d][%d]:", type, l->array[i].x, l->array[i].y);
+		print_creature(l->array[i]);
 	}
 	printf("\n");
+}
+
+void replace_creature(creature *old, creature new) {
+	old->type = new.type;
+	old->proc_age = new.proc_age;
+	old->hung_age = new.hung_age;
+	old->x = new.x;
+	old->y = new.y;
 }
 
 // 0: north, 1: east, 2: south, 3: west, -1: invalid
@@ -74,7 +96,8 @@ int orient_check(int L, int C, creature grid[L][C], int x, int y, int orient) {
 creature move_creature(int L, int C, creature grid[L][C], int x, int y, int cur_gen) {
 	int P = 0;
 	int p[4] = {0, 0, 0, 0};
-	creature currentc = grid[x][y];
+	creature currentc;
+	replace_creature(&currentc, grid[x][y]);
 
 	// check grids around
 	if (currentc.type == FOX) {
@@ -137,6 +160,7 @@ creature move_creature(int L, int C, creature grid[L][C], int x, int y, int cur_
 list move_creatures(int L, int C, creature grid[L][C], int cur_gen, list l) {
 	list l_new = create_list(l.size);
 	int x, y;
+
 	for (int i = 0; i < l.used; i++){
 
 		x = l.array[i].x;
@@ -144,6 +168,7 @@ list move_creatures(int L, int C, creature grid[L][C], int cur_gen, list l) {
 
 		append_list(&l_new, move_creature(L, C, grid, x, y, cur_gen));
 	}
+
 	/*print_list(&l_new);*/
 	return l_new;
 }
@@ -168,75 +193,112 @@ int brawl(creature atack, creature defense) {
 void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age,
 		int hung_age, list l_old, list* l_other, list* l) {
 
+
 	// list for removing creatures
-	list r = create_list(l->used);
-	for (int i = 0; i < l->used; i++){
-		int ax = l->array[i].x;
-		int ay = l->array[i].y;
+	list dead_same_sp = create_list(l->used);
+	list dead_other_sp = create_list(l->used);
+	list new_borns = create_list(l->used);
+	{
 
-		ax = l->array[i].x;
-		ay = l->array[i].y;
-
-		creature atack = l->array[i];
-		creature defense = grid[ax][ay];
-
-		if (brawl(atack, defense)) {
-
-			// get creature position on grid
+		int size = l->used;
+		for (int i = 0; i < size; i++){
+			int ax = l->array[i].x;
+			int ay = l->array[i].y;
 			int oldx = l_old.array[i].x;
 			int oldy = l_old.array[i].y;
-			creature* old_creature = &(grid[oldx][oldy]);
 
-			atack.proc_age++;
+			creature* atack = &(l->array[i]);
+			creature defense = grid[ax][ay];
+			creature old_creature = grid[oldx][oldy];
+			printf("BRAWL:");
+			print_creature(old_creature);
+			print_creature(defense);
 
-			// can reproduce
-			if (atack.proc_age++ >= proc_age){
-				atack.proc_age = 0;
-				old_creature->hung_age = 0;
-				append_list(l, *old_creature);
+			if (brawl(*atack, defense)) {
 
-			// cant reproduce
-			} else {
-				old_creature->type = EMPTY;
-				old_creature->proc_age = 0;
-				old_creature->hung_age = 0;
-			} 
+				/*
+				* can reproduce
+				*/
+				if (++atack->proc_age >= proc_age){
+					printf("REPRODUCE");
+					atack->proc_age = 0;
+					old_creature.proc_age = 0;
+					old_creature.hung_age = 0;
 
-			if (atack.type == FOX) {
+					append_list(&new_borns, old_creature);
 
-				// reset hunger
-				if (defense.type == BUNNY) {
-					atack.hung_age = 0;
-					remove_creature(l_other, defense);
+				// cant reproduce
 				} else {
-					atack.hung_age++;
+					printf("WIN");
+					old_creature.type = EMPTY;
+					old_creature.proc_age = 0;
+					old_creature.hung_age = 0;
 				} 
 
-				// death from starvation
-				if (atack.hung_age >= hung_age) {
-					creature tmp = atack;
-					atack.hung_age = 0;
-					atack.proc_age = 0;
-					atack.type = EMPTY;
-					append_list(&r, tmp);
+
+				if (atack->type == FOX) {
+
+					// reset hunger
+					if (defense.type == BUNNY) {
+						atack->hung_age = 0;
+
+					} else {
+						atack->hung_age++;
+					} 
+
+					// death from starvation
+					if (atack->hung_age >= hung_age) {
+						printf(":STARVE");
+						append_list(&dead_same_sp, *atack);
+					}
 				}
+
+				// remove creature that lost
+				if (defense.type == atack->type) {
+					append_list(&dead_same_sp, defense);
+				}
+				else {
+					append_list(&dead_other_sp, defense);
+				}
+
+				// update grid
+				{
+					creature c = *atack;
+
+					if (atack->type == FOX && atack->hung_age >= hung_age) {
+						c.hung_age = 0;
+						c.hung_age = 0;
+						c.type = EMPTY;
+					}
+					replace_creature(&grid[ax][ay], c);
+					replace_creature(&grid[oldx][oldy], old_creature);
+				}
+
 			}
 
-			// remove creature that lost
-			if (defense.type != EMPTY)
-				append_list(&r, defense);
-
-
-			// update grid
-			grid[ax][ay] = atack;
+			// lost brawl
+			else {
+				atack->proc_age++;
+				atack->hung_age++;
+				replace_creature(&grid[ax][ay], *atack);
+			}
+			printf("\n");
 		}
-	} 
+	}
 
 	// remove dead creatures
-	for (int i = 0; i < r.used; i++)
-		remove_creature(l, r.array[i]);
+	for (int i = 0; i < dead_same_sp.used; i++) {
+		remove_creature(l, dead_same_sp.array[i]);
+	}
+	for (int i = 0; i < dead_other_sp.used; i++) {
+		remove_creature(l_other, dead_other_sp.array[i]);
+	}
+	for (int i = 0; i < new_borns.used; i++) {
+		append_list(l, new_borns.array[i]);
+	}
 
-	destroy_list(r);
+	destroy_list(dead_same_sp);
+	destroy_list(dead_other_sp);
 }
 
 void print_grid(int L, int C, creature grid[L][C]){
