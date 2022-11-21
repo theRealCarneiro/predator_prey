@@ -25,7 +25,7 @@ void remove_id(list* l, int id);
 void print_list(list* l);
 
 creature create_creature(int x, int y, int type);
-creature move_creature(int L, int C, creature grid[L][C], int x, int y, int cur_gen);
+creature move_creature(int L, int C, creature grid[L][C], creature c, int cur_gen);
 list move_creatures(int L, int C, creature grid[L][C], int cur_gen, list l);
 void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_gen,
 		int hung_age, list l_old, list* l_other, list* l);

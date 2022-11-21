@@ -67,7 +67,7 @@ void print_list(list* l) {
 	printf("\n");
 }
 
-void replace_creature(creature *old, creature new) {
+void copy_creature(creature *old, creature new) {
 	old->type = new.type;
 	old->proc_age = new.proc_age;
 	old->hung_age = new.hung_age;
@@ -93,40 +93,36 @@ int orient_check(int L, int C, creature grid[L][C], int x, int y, int orient) {
 		return -1;
 }
 
-creature move_creature(int L, int C, creature grid[L][C], int x, int y, int cur_gen) {
+creature move_creature(int L, int C, creature grid[L][C], creature c, int cur_gen) {
 	int P = 0;
 	int p[4] = {0, 0, 0, 0};
-	creature currentc;
-	replace_creature(&currentc, grid[x][y]);
 
 	// check grids around
-	if (currentc.type == FOX) {
+	if (c.type == FOX) {
 		for (int i = 0; i < 4; i++) {
-			if (orient_check(L, C, grid, x, y, i) == BUNNY) {
+			if (orient_check(L, C, grid, c.x, c.y, i) == BUNNY) {
 				p[i] = 1;
+
 				P++;
 			}
 		}
 	}
-	if ((currentc.type == FOX && P == 0) || currentc.type == BUNNY) {
+	if ((c.type == FOX && P == 0) || c.type == BUNNY) {
 		for (int i = 0; i < 4; i++) {
-			int type = orient_check(L, C, grid, x, y, i);
+			int type = orient_check(L, C, grid, c.x, c.y, i);
 			if (type == EMPTY) {
 				p[i] = 1;
+
 				P++;
 			}
 		}
 	}
 
-	if (P == 0) {
-		return currentc;
-	}
+	if (P == 0)
+		return c;
 
-	creature new_pos = currentc;
+	int pos = (cur_gen + c.x + c.y) % P;
 
-	int pos = (cur_gen + x + y) % P;
-
-	/*printf("%d %d %d %d -- ", p[0], p[1], p[2], p[3]);*/
 	int tmp = 0, i = 0;
 	for (i = 0; i < 4; i++) {
 		if (p[i] == 1) {
@@ -135,41 +131,37 @@ creature move_creature(int L, int C, creature grid[L][C], int x, int y, int cur_
 			tmp++;
 		}
 	}
-	/*printf("%d[%d][%d]:", grid[x][y].type, grid[x][y].x, grid[x][y].y);*/
 
 	// north
 	if (i == 0)
-		new_pos.x--;
+		c.x--;
 
 	// east
 	else if (i == 1)
-		new_pos.y++;
+		c.y++;
 	
 	// south
 	else if (i == 2)
-		new_pos.x++;
+		c.x++;
 	
 	// west
 	else if (i == 3)
-		new_pos.y--;
+		c.y--;
 
-	/*printf("[%d][%d]\n", new_pos.x, new_pos.y);*/
-	return new_pos;
+	return c;
 }
 
 list move_creatures(int L, int C, creature grid[L][C], int cur_gen, list l) {
 	list l_new = create_list(l.size);
-	int x, y;
+	l_new.used = l.used;
 
+	# pragma omp parallel for
 	for (int i = 0; i < l.used; i++){
 
-		x = l.array[i].x;
-		y = l.array[i].y;
-
-		append_list(&l_new, move_creature(L, C, grid, x, y, cur_gen));
+		creature c = move_creature(L, C, grid, l.array[i], cur_gen);
+		l_new.array[i] = c;
 	}
 
-	/*print_list(&l_new);*/
 	return l_new;
 }
 
@@ -201,6 +193,7 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 	{
 
 		int size = l->used;
+		# pragma omp parallel for
 		for (int i = 0; i < size; i++){
 			int ax = l->array[i].x;
 			int ay = l->array[i].y;
@@ -210,9 +203,9 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 			creature* atack = &(l->array[i]);
 			creature defense = grid[ax][ay];
 			creature old_creature = grid[oldx][oldy];
-			printf("BRAWL:");
-			print_creature(old_creature);
-			print_creature(defense);
+			/*printf("BRAWL:");*/
+			/*print_creature(old_creature);*/
+			/*print_creature(defense);*/
 
 			if (brawl(*atack, defense)) {
 
@@ -220,16 +213,17 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 				* can reproduce
 				*/
 				if (++atack->proc_age >= proc_age){
-					printf("REPRODUCE");
+					/*printf("REPRODUCE");*/
 					atack->proc_age = 0;
 					old_creature.proc_age = 0;
 					old_creature.hung_age = 0;
 
+					# pragma omp critical (new_borns)
 					append_list(&new_borns, old_creature);
 
 				// cant reproduce
 				} else {
-					printf("WIN");
+					/*printf("WIN");*/
 					old_creature.type = EMPTY;
 					old_creature.proc_age = 0;
 					old_creature.hung_age = 0;
@@ -248,16 +242,19 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 
 					// death from starvation
 					if (atack->hung_age >= hung_age) {
-						printf(":STARVE");
+						/*printf(":STARVE");*/
+						# pragma omp critical (dead_same_sp)
 						append_list(&dead_same_sp, *atack);
 					}
 				}
 
 				// remove creature that lost
 				if (defense.type == atack->type) {
+					# pragma omp critical (dead_same_sp)
 					append_list(&dead_same_sp, defense);
 				}
 				else {
+					# pragma omp critical (dead_other_sp)
 					append_list(&dead_other_sp, defense);
 				}
 
@@ -270,8 +267,8 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 						c.hung_age = 0;
 						c.type = EMPTY;
 					}
-					replace_creature(&grid[ax][ay], c);
-					replace_creature(&grid[oldx][oldy], old_creature);
+					copy_creature(&grid[ax][ay], c);
+					copy_creature(&grid[oldx][oldy], old_creature);
 				}
 
 			}
@@ -280,9 +277,9 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 			else {
 				atack->proc_age++;
 				atack->hung_age++;
-				replace_creature(&grid[ax][ay], *atack);
+				copy_creature(&grid[ax][ay], *atack);
 			}
-			printf("\n");
+			/*printf("\n");*/
 		}
 	}
 

@@ -63,11 +63,11 @@ int main() {
 	// Generations
 	print_grid(L, C, grid);
 	for (int g = 0; g < N_GEN; g++) {
-		printf("\n------------\n");
+		/*printf("\n------------\n");*/
 		list bunny_new = move_creatures(L, C, grid, g, bunny);
 		solve_conflict(L, C, grid, g, GEN_PROC_BUNNY, GEN_FOOD_FOX, bunny, &fox, &bunny_new);
 		print_grid(L, C, grid);
-		printf("\n------------\n");
+		/*printf("\n------------\n");*/
 
 		list fox_new = move_creatures(L, C, grid, g, fox);
 		solve_conflict(L, C, grid, g, GEN_PROC_FOX, GEN_FOOD_FOX, fox, &bunny_new, &fox_new);
