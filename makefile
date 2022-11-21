@@ -1,9 +1,10 @@
 TARGET = eco
+FLAGS = -Wall -fopenmp
 SRC = main.c creature.c
 OBJ = ${FILES:.c=.o}
 
 ${TARGET}:	.c.o	${OBJ}
-	gcc main.c creature.c -Wall -pg -o $@
+	gcc main.c creature.c -Wall ${FLAGS} -o $@
 
 ${OBJ}:	creature.h
 
