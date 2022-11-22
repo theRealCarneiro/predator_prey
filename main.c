@@ -63,11 +63,9 @@ int main() {
 	// Generations
 	print_grid(L, C, grid);
 	for (int g = 0; g < N_GEN; g++) {
-		/*printf("\n------------\n");*/
 		list bunny_new = move_creatures(L, C, grid, g, bunny);
 		solve_conflict(L, C, grid, g, GEN_PROC_BUNNY, GEN_FOOD_FOX, bunny, &fox, &bunny_new);
-		print_grid(L, C, grid);
-		/*printf("\n------------\n");*/
+		/*print_grid(L, C, grid);*/
 
 		list fox_new = move_creatures(L, C, grid, g, fox);
 		solve_conflict(L, C, grid, g, GEN_PROC_FOX, GEN_FOOD_FOX, fox, &bunny_new, &fox_new);
@@ -79,6 +77,14 @@ int main() {
 		fox = fox_new;
 	}
 	print_grid(L, C, grid);
+
+	for (int i = 0; i < bunny.used; i++) {
+		printf("COELHO %d %d\n", bunny.array[i].x, bunny.array[i].y);
+	}
+
+	for (int i = 0; i < fox.used; i++) {
+		printf("RAPOSA %d %d\n", fox.array[i].x, fox.array[i].y);
+	}
 
 	return 0;
 }

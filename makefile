@@ -16,6 +16,6 @@ test: test/test_list.c creature.c creature.h
 	./test_list
 
 clean:
-	rm -f *.o
+	rm -f *.o test_* $(TARGET)
 
 .PHONY: test clean
