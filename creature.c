@@ -25,8 +25,7 @@ void append_list(list* l, creature c) {
 }
 
 void remove_id(list* l, int id) {
-	memmove(&l->array[id], &l->array[id + 1], (l->used - id - 1) * sizeof(creature));
-	l->used--;
+	l->array[id].type = -1;
 }
 
 void remove_creature(list* l, creature c) {
@@ -34,9 +33,20 @@ void remove_creature(list* l, creature c) {
 		if(l->array[i].x == c.x && l->array[i].y == c.y &&
 				l->array[i].hung_age == c.hung_age &&
 				l->array[i].proc_age == c.proc_age){ 
-			memmove(&l->array[i], &l->array[i + 1], (l->used - i - 1) * sizeof(creature));
-			l->used--;
+			l->array[i].type = -1;
 		}
+	}
+}
+
+void fix_list(list* l) {
+	int j = 0;
+	int size = l->used;
+	for (int i = 0; i < size; i++) {
+		if (l->array[i].type != -1) {
+			l->array[j] = l->array[i];
+			j++;
+			
+		} else l->used--;
 	}
 }
 
@@ -258,6 +268,9 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 			if (atack.type == FOX && defense.type == BUNNY) {
 				atack.hung_age = 0;
 
+				creature c;
+				c.type = i;
+
 				# pragma omp critical (dead_other_sp)
 				append_list(&dead_other_sp, defense);
 			}
@@ -270,8 +283,11 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 					atack.hung_age = 0;
 				}
 
+				creature c;
+				c.type = i;
+
 				# pragma omp critical (dead_same_sp)
-				append_list(&dead_same_sp, defense);
+				append_list(&dead_same_sp, c);
 			}
 
 			// update grid
@@ -289,25 +305,39 @@ void solve_conflict(int L, int C, creature grid[L][C], int cur_gen, int proc_age
 			# pragma omp critical (grid)
 			l->array[i] = atack;
 
+			creature c;
+			c.type = i;
+
 			# pragma omp critical (dead_same_sp)
-			append_list(&dead_same_sp, atack);
+			append_list(&dead_same_sp, c);
 		}
 	}
 
-	// remove dead creatures
+	// remove dead creatures from same species
+	# pragma omp parallel for
 	for (int i = 0; i < dead_same_sp.used; i++) {
-		remove_creature(l, dead_same_sp.array[i]);
+		remove_id(l, dead_same_sp.array[i].type);
+		/*remove_creature(l, dead_same_sp.array[i]);*/
 	}
+	fix_list(l);
+	
+	// fix grid
+	# pragma omp parallel for
 	for (int i = 0; i < l->used; i++) {
 		grid[l->array[i].x][l->array[i].y] = l->array[i];
 	}
+
+	// remove dead creatures from other species
+	# pragma omp parallel for
 	for (int i = 0; i < dead_other_sp.used; i++) {
+		/*remove_id(l, dead_other_sp.array[i].type);*/
 		remove_creature(l_other, dead_other_sp.array[i]);
 	}
+	fix_list(l_other);
+
 	for (int i = 0; i < new_borns.used; i++) {
 		append_list(l, new_borns.array[i]);
 	}
-
 
 	destroy_list(dead_same_sp);
 	destroy_list(dead_other_sp);

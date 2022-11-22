@@ -1,21 +1,21 @@
 TARGET = eco
-FLAGS = -Wall -fopenmp
+FLAGS = -Wall -pg
 SRC = main.c creature.c
-OBJ = ${FILES:.c=.o}
+OBJ = ${SRC:.c=.o}
 
 ${TARGET}:	.c.o	${OBJ}
-	gcc main.c creature.c -Wall ${FLAGS} -o $@
+	gcc $(OBJ) ${FLAGS} -o $@
 
 ${OBJ}:	creature.h
 
 .c.o:
-	${CC} -c ${SRC}
+	${CC} -pg -c ${SRC}
 
 test: test/test_list.c creature.c creature.h
 	gcc test/test_list.c creature.c -o test_list
 	./test_list
 
 clean:
-	rm -f *.o test_* $(TARGET)
+	rm -f *.o test_* $(TARGET) gmon.out
 
 .PHONY: test clean
