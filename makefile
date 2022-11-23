@@ -1,5 +1,5 @@
 TARGET = eco
-FLAGS = -Wall -pg
+FLAGS = -Wall -pg -fopenmp
 SRC = main.c creature.c
 OBJ = ${SRC:.c=.o}
 
@@ -9,7 +9,7 @@ ${TARGET}:	.c.o	${OBJ}
 ${OBJ}:	creature.h
 
 .c.o:
-	${CC} -pg -c ${SRC}
+	${CC} ${FLAGS} -c ${SRC}
 
 test: test/test_list.c creature.c creature.h
 	gcc test/test_list.c creature.c -o test_list

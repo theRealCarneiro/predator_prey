@@ -2,81 +2,76 @@
 #include <stdio.h>
 #include "creature.h"
 
-int GEN_PROC_BUNNY, GEN_PROC_FOX, GEN_FOOD_FOX, N_GEN, L, C, N;
+void read_settings(settings* s) {
+	scanf("%d %d %d %d %d %d %d",
+		&s->GEN_PROC_BUNNY,
+		&s->GEN_PROC_FOX,
+		&s->GEN_FOOD_FOX,
+		&s->N_GEN, &s->L, &s->C, &s->N
+	);
+}
 
-
-int main() {
-	list bunny;
-	list fox;
-
-	char obj[10];
+void read_grid(settings s, creature* grid, list* bunny, list* fox, list* rock) {
 	int x, y;
+	char obj[10];
 
-	char* file_path = "input.txt";
-	FILE* file;
-	file = fopen(file_path, "r");
-	fscanf(file, "%d", &GEN_PROC_BUNNY);
-	fscanf(file, "%d", &GEN_PROC_FOX);
-	fscanf(file, "%d", &GEN_FOOD_FOX);
-	fscanf(file, "%d", &N_GEN);
-	fscanf(file, "%d", &L);
-	fscanf(file, "%d", &C);
-	fscanf(file, "%d", &N);
+	while(scanf("%s %d %d\n", obj, &x, &y) == 3){
 
-	creature grid[L][C];
-	for (int i = 0; i < L; i++) {
-		for (int j = 0; j < C; j++) {
-			creature c = {i, j, EMPTY, 0, 0};
-			grid[i][j] = c;
-		}
-	}
-
-	bunny = create_list(L * C);
-	fox = create_list(L * C);
-
-	while(fscanf(file, "%s %d %d\n", obj, &x, &y) == 3){
-
-		/*printf("%s %d %d\n", obj, x, y);*/
 		// rock
 		if (!strcmp("ROCHA", obj)) {
-			grid[x][y].type = ROCK;
+			grid[x * s.C + y].type = ROCK;
+			append_creature(rock, grid[x * s.C + y]);
+		} 
 
 		// bunny
-		} 
 		else if (!strcmp("COELHO", obj)) {
-			grid[x][y].type = BUNNY;
-			append_list(&bunny, grid[x][y]);
-
+			grid[x * s.C + y].type = BUNNY;
+			append_creature(bunny, grid[x * s.C + y]);
 		}
+
 		// fox
 		else if (!strcmp("RAPOSA", obj)) {
-			grid[x][y].type = FOX;
-			append_list(&fox, grid[x][y]);
+			grid[x * s.C + y].type = FOX;
+			append_creature(fox, grid[x * s.C + y]);
 		}
 
 	}
+}
 
-	fclose(file);
+int main() {
+	list rock, bunny, fox;
+	settings s;
+	read_settings(&s);
 
-	// Main Loop
-
-	// Generations
-	print_grid(L, C, grid);
-	for (int g = 0; g < N_GEN; g++) {
-		list bunny_new = move_creatures(L, C, grid, g, bunny);
-		solve_conflict(L, C, grid, g, GEN_PROC_BUNNY, GEN_FOOD_FOX, bunny, &fox, &bunny_new);
-		/*print_grid(L, C, grid);*/
-
-		list fox_new = move_creatures(L, C, grid, g, fox);
-		solve_conflict(L, C, grid, g, GEN_PROC_FOX, GEN_FOOD_FOX, fox, &bunny_new, &fox_new);
-		print_grid(L, C, grid);
-
-		destroy_list(bunny);
-		destroy_list(fox);
-		bunny = bunny_new;
-		fox = fox_new;
+	creature grid[s.L * s.C];
+	for (int i = 0; i < s.L; i++) {
+		for (int j = 0; j < s.C; j++) {
+			creature c = {i, j, i, j, EMPTY, 0, 0, 0};
+			grid[i * s.C + j] = c;
+		}
 	}
-	print_grid(L, C, grid);
+
+	bunny = create_list(s.L * s.C);
+	fox = create_list(s.L * s.C);
+	rock = create_list(s.L * s.C);
+	read_grid(s, grid, &bunny, &fox, &rock);
+
+	for (s.C_GEN = 0; s.C_GEN < s.N_GEN; s.C_GEN++) {
+		move_creatures(s, grid, &bunny);
+		solve_conflict(s, grid, &fox, &bunny);
+		move_creatures(s, grid, &fox);
+		solve_conflict(s, grid, &bunny, &fox);
+	}
+
+	s.N = rock.used + bunny.used + fox.used;
+
+	printf("%d %d %d %d %d %d %d\n",
+		s.GEN_PROC_BUNNY, s.GEN_PROC_FOX, s.GEN_FOOD_FOX, 0, s.L, s.C, s.N
+	);
+
+	for (int i = 0; i < rock.used; i++) {
+		printf("ROCHA %d %d\n", rock.array[i].x, rock.array[i].y);
+	}
 
 	for (int i = 0; i < bunny.used; i++) {
 		printf("COELHO %d %d\n", bunny.array[i].x, bunny.array[i].y);
@@ -85,6 +80,10 @@ int main() {
 	for (int i = 0; i < fox.used; i++) {
 		printf("RAPOSA %d %d\n", fox.array[i].x, fox.array[i].y);
 	}
+
+	destroy_list(rock);
+	destroy_list(bunny);
+	destroy_list(fox);
 
 	return 0;
 }
