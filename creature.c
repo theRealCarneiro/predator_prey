@@ -4,6 +4,11 @@
 #include <omp.h>
 #include "creature.h"
 
+#define NORTH(x, y) (x - 1)
+#define EAST(x, y) (y + 1)
+#define SOUTH(x, y) (x + 1)
+#define WEST(x, y) (y - 1)
+
 
 // Malloc list 
 list create_list(int size){
@@ -84,19 +89,19 @@ void copy_creature(creature *old, creature new) {
 // 0: north, 1: east, 2: south, 3: west, -1: invalid
 int orient_check(settings s, creature* grid, int p[4], int x, int y, int type) {
 	int P = 0;
-	if (x - 1 >= 0 && grid[(x - 1) * s.C + y].type == type) {
+	if (NORTH(x,y) >= 0 && grid[NORTH(x, y) * s.C + y].type == type) {
 		p[0] = 1;
 		P++;
 	}
-	if (y + 1 < s.C && grid[x * s.C + y + 1].type == type) {
+	if (EAST(x, y) < s.C && grid[x * s.C + EAST(x, y)].type == type) {
 		p[1] = 1;
 		P++;
 	}
-	if (x + 1 < s.L && grid[(x + 1) * s.C + y].type == type) {
+	if (SOUTH(x, y) < s.L && grid[(SOUTH(x, y)) * s.C + y].type == type) {
 		p[2] = 1;
 		P++;
 	}
-	if (y - 1 >= 0 && grid[x * s.C + y - 1].type == type) {
+	if (WEST(x, y) >= 0 && grid[x * s.C + WEST(x, y)].type == type) {
 		p[3] = 1;
 		P++;
 	}
@@ -130,14 +135,14 @@ creature move_creature(settings s, creature* grid, creature c) {
 		}
 	}
 
-	if (i == 0)			// north
-		c.x--;
-	else if (i == 1)	// east
-		c.y++;
-	else if (i == 2)	// south
-		c.x++;
-	else if (i == 3)	// west
-		c.y--;
+	if (i == 0)
+		c.x = NORTH(c.x, c.y);
+	else if (i == 1)
+		c.y = EAST(c.x, c.y);
+	else if (i == 2)
+		c.x = SOUTH(c.x, c.y);
+	else if (i == 3)
+		c.y = WEST(c.x, c.y);
 
 	return c;
 }
